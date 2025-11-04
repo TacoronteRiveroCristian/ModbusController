@@ -1,0 +1,43 @@
+{
+    "connection": {
+        "type": "tcp",
+        "host": "192.168.1.100",
+        "port": 502,
+        "timeout": 3,
+        "retry_on_empty": true,
+        "retries": 3
+    },
+    "registers": [
+        {
+            "name": "potencia_actual",
+            "address": 1000,
+            "type": "float32",
+            "unit": "kW",
+            "function_code": 3,
+            "poll_interval": null,
+            "description": "Lectura de potencia actual del sistema"
+        },
+        {
+            "name": "limitacion_potencia",
+            "address": 2000,
+            "type": "float32",
+            "unit": "kW",
+            "function_code": 3,
+            "poll_interval": null,
+            "description": "Setpoint de limitación de potencia (0 = limitado al mínimo)"
+        },
+        {
+            "name": "enable_limitacion",
+            "address": 2002,
+            "type": "uint16",
+            "unit": "",
+            "function_code": 3,
+            "poll_interval": null,
+            "description": "Habilitación de limitación de potencia (0=desactivado, 1=activado)"
+        }
+    ],
+    "limits": {
+        "max_registers_per_read": 125,
+        "min_request_interval": 0.1
+    }
+}

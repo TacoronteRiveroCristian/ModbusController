@@ -1,0 +1,72 @@
+{
+    "connection": {
+        "type": "tcp",
+        "host": "192.168.1.100",
+        "port": 502,
+        "timeout": 3,
+        "retry_on_empty": true,
+        "retries": 3,
+        "retry_delay": 1
+    },
+    "registers": [
+        {
+            "name": "temperatura_ambiente",
+            "address": 100,
+            "type": "float32",
+            "unit": "°C",
+            "function_code": 3,
+            "poll_interval": 5.0,
+            "description": "Temperatura ambiente sala 1"
+        },
+        {
+            "name": "presion_sistema",
+            "address": 200,
+            "type": "uint16",
+            "unit": "bar",
+            "function_code": 3,
+            "poll_interval": 2.0,
+            "description": "Presión del sistema principal"
+        },
+        {
+            "name": "setpoint_temperatura",
+            "address": 300,
+            "type": "float32",
+            "unit": "°C",
+            "function_code": 3,
+            "poll_interval": 10.0,
+            "description": "Consigna de temperatura"
+        },
+        {
+            "name": "estado_bomba",
+            "address": 400,
+            "type": "uint16",
+            "unit": "",
+            "function_code": 3,
+            "poll_interval": 1.0,
+            "description": "Estado de la bomba (0=OFF, 1=ON)"
+        },
+        {
+            "name": "modelo_equipo",
+            "address": 500,
+            "type": "string",
+            "length": 8,
+            "unit": "",
+            "function_code": 3,
+            "poll_interval": 60.0,
+            "description": "Modelo del equipo (string de 8 registros)"
+        },
+        {
+            "name": "contador_energia",
+            "address": 600,
+            "type": "uint32",
+            "unit": "kWh",
+            "function_code": 3,
+            "poll_interval": 30.0,
+            "description": "Contador de energía total"
+        }
+    ],
+    "limits": {
+        "max_registers_per_read": 125,
+        "min_request_interval": 0.1
+    }
+}

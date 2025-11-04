@@ -1,0 +1,6 @@
+# Sección de test para Makefile
+.PHONY: test-run
+
+test-run:
+	@echo "Ejecutando tests con pytest..."
+	.venv/bin/pytest tests/test_controller.py -v
