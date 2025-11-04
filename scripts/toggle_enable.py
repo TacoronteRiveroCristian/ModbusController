@@ -43,8 +43,17 @@ async def main():
         estado_texto = "HABILITADO" if estado_actual == 1 else "DESHABILITADO"
         print(f"Estado actual: {estado_texto} ({int(estado_actual)})")
 
+        # Si vamos a habilitar, primero configurar timeout a 0
+        if nuevo_valor == 1:
+            print(f"\n[1/2] Desactivando timeout automático...")
+            await controller.write_register("Timeout_limitacion", 0)
+            await asyncio.sleep(0.3)
+            timeout_verificado = await controller.read_register("Timeout_limitacion")
+            print(f"        Timeout: {int(timeout_verificado)}")
+
         # Escribir nuevo valor
-        print(f"\nEscribiendo: {nuevo_valor} ({'HABILITADO' if nuevo_valor == 1 else 'DESHABILITADO'})...")
+        paso = "[2/2]" if nuevo_valor == 1 else ""
+        print(f"\n{paso} Escribiendo: {nuevo_valor} ({'HABILITADO' if nuevo_valor == 1 else 'DESHABILITADO'})...")
         await controller.write_register("Enable_limitacion", nuevo_valor)
         await asyncio.sleep(0.5)
 

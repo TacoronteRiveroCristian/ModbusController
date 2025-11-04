@@ -184,12 +184,14 @@ class ModbusController:
                 if first_reg.function_code == 3:
                     response = await self.client.read_holding_registers(
                         address=start_address,
-                        count=count
+                        count=count,
+                        device_id=slave
                     )
                 elif first_reg.function_code == 4:
                     response = await self.client.read_input_registers(
                         address=start_address,
-                        count=count
+                        count=count,
+                        device_id=slave
                     )
                 else:
                     raise ReadError(f"Function code {first_reg.function_code} no soportado")
@@ -291,13 +293,15 @@ class ModbusController:
                     # Escribir registro único
                     response = await self.client.write_register(
                         address=reg.address,
-                        value=registers[0]
+                        value=registers[0],
+                        device_id=slave
                     )
                 else:
                     # Escribir múltiples registros
                     response = await self.client.write_registers(
                         address=reg.address,
-                        values=registers
+                        values=registers,
+                        device_id=slave
                     )
 
                 if response.isError():

@@ -36,37 +36,55 @@ async def main():
         print("Estado inicial:")
         limit_inicial = await controller.read_register("Limitacion_potencia")
         enable_inicial = await controller.read_register("Enable_limitacion")
+        timeout_inicial = await controller.read_register("Timeout_limitacion")
         print(f"  Limitación: {int(limit_inicial)}% WMax")
         print(f"  Enable: {int(enable_inicial)} ({'HABILITADO' if enable_inicial == 1 else 'DESHABILITADO'})")
+        print(f"  Timeout: {int(timeout_inicial)}")
 
-        # Paso 1: Escribir limitación
-        print(f"\n[1/2] Escribiendo limitación: {porcentaje}% WMax...")
+        # Paso 1: Desactivar timeout (CRÍTICO para que el enable se mantenga)
+        print(f"\n[1/3] Desactivando timeout automático...")
+        await controller.write_register("Timeout_limitacion", 0)
+        await asyncio.sleep(0.3)
+
+        timeout_verificado = await controller.read_register("Timeout_limitacion")
+        print(f"      Verificado: {int(timeout_verificado)}")
+
+        # Paso 2: Escribir limitación
+        print(f"\n[2/3] Escribiendo limitación: {porcentaje}% WMax...")
         await controller.write_register("Limitacion_potencia", porcentaje)
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.3)
 
         limit_verificado = await controller.read_register("Limitacion_potencia")
         print(f"      Verificado: {int(limit_verificado)}% WMax")
 
-        # Paso 2: Habilitar
-        print(f"\n[2/2] Habilitando limitación...")
+        # Paso 3: Habilitar
+        print(f"\n[3/3] Habilitando limitación...")
         await controller.write_register("Enable_limitacion", 1)
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.3)
 
         enable_verificado = await controller.read_register("Enable_limitacion")
         print(f"      Verificado: {int(enable_verificado)} ({'HABILITADO' if enable_verificado == 1 else 'DESHABILITADO'})")
 
         # Estado final
         print(f"\nEstado final:")
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(1.0)  # Esperar más tiempo para confirmar que se mantiene
         limit_final = await controller.read_register("Limitacion_potencia")
         enable_final = await controller.read_register("Enable_limitacion")
+        timeout_final = await controller.read_register("Timeout_limitacion")
         print(f"  Limitación: {int(limit_final)}% WMax")
         print(f"  Enable: {int(enable_final)} ({'HABILITADO' if enable_final == 1 else 'DESHABILITADO'})")
+        print(f"  Timeout: {int(timeout_final)}")
 
-        if int(enable_final) == 1 and int(limit_final) == porcentaje:
+        if int(enable_final) == 1 and int(limit_final) == porcentaje and int(timeout_final) == 0:
             print(f"\n✓ Limitación al {porcentaje}% habilitada correctamente")
         else:
             print(f"\n✗ Advertencia: La configuración no se aplicó correctamente")
+            if int(enable_final) != 1:
+                print(f"   - Enable debería ser 1 pero es {int(enable_final)}")
+            if int(limit_final) != porcentaje:
+                print(f"   - Límite debería ser {porcentaje}% pero es {int(limit_final)}%")
+            if int(timeout_final) != 0:
+                print(f"   - Timeout debería ser 0 pero es {int(timeout_final)}")
         print()
 
 

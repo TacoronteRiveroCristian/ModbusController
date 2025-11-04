@@ -28,6 +28,16 @@
             "description": "WMaxLimPct - Set power output to specified level (0-100%)"
         },
         {
+            "name": "Timeout_limitacion",
+            "address": 40244,
+            "type": "uint16",
+            "unit": "",
+            "function_code": 3,
+            "poll_interval": 10.0,
+            "writable": true,
+            "description": "Timeout control - Must be 0 for persistent enable (0=No timeout, 1=Auto-reset)"
+        },
+        {
             "name": "Enable_limitacion",
             "address": 40246,
             "type": "uint16",
