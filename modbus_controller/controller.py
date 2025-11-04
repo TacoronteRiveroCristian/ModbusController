@@ -79,8 +79,7 @@ class ModbusController:
                     self.client = AsyncModbusTcpClient(
                         host=conn.host,
                         port=conn.port,
-                        timeout=conn.timeout,
-                        retry_on_empty=conn.retry_on_empty
+                        timeout=conn.timeout
                     )
                 elif conn.type == "rtu":
                     if not conn.port_name:
@@ -185,14 +184,12 @@ class ModbusController:
                 if first_reg.function_code == 3:
                     response = await self.client.read_holding_registers(
                         address=start_address,
-                        count=count,
-                        slave=slave
+                        count=count
                     )
                 elif first_reg.function_code == 4:
                     response = await self.client.read_input_registers(
                         address=start_address,
-                        count=count,
-                        slave=slave
+                        count=count
                     )
                 else:
                     raise ReadError(f"Function code {first_reg.function_code} no soportado")
@@ -294,15 +291,13 @@ class ModbusController:
                     # Escribir registro único
                     response = await self.client.write_register(
                         address=reg.address,
-                        value=registers[0],
-                        slave=slave
+                        value=registers[0]
                     )
                 else:
                     # Escribir múltiples registros
                     response = await self.client.write_registers(
                         address=reg.address,
-                        values=registers,
-                        slave=slave
+                        values=registers
                     )
 
                 if response.isError():

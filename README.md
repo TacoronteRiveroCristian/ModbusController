@@ -269,6 +269,28 @@ make help      # Muestra ayuda de comandos disponibles
 make test      # Ejecuta los tests unitarios
 ```
 
+### Scripts de operaciones Modbus
+
+El directorio `scripts/` incluye un Makefile para operaciones rápidas de lectura/escritura:
+
+```bash
+cd scripts/
+
+# Lectura de registros
+make read                              # Leer todos los registros (config por defecto)
+make read CONFIG=configs/otro.json     # Leer con configuración específica
+
+# Control de limitación de potencia
+make status                            # Ver estado actual de limitación
+make limit LIMIT=50                    # Establecer límite al 50% y habilitar
+make set-limit LIMIT=75                # Solo cambiar límite al 75% (sin habilitar)
+make enable                            # Habilitar limitación de potencia
+make disable                           # Deshabilitar limitación de potencia
+
+# Ver todos los comandos disponibles
+make help
+```
+
 ## 🧪 Tests
 
 Para ejecutar los tests manualmente:
