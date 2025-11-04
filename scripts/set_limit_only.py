@@ -12,16 +12,17 @@ from modbus_controller import ModbusController
 
 async def main():
     if len(sys.argv) < 2:
-        print("Uso: python set_limit_only.py <porcentaje> [config_path]")
+        print("Uso: python set_limit_only.py <valor> [config_path]")
         print("\nEjemplos:")
-        print("  python set_limit_only.py 50")
-        print("  python set_limit_only.py 75 configs/otro.json")
+        print("  python set_limit_only.py 50      # Valor 50")
+        print("  python set_limit_only.py 5000    # Valor 5000 (50% escalado)")
+        print("  python set_limit_only.py 10000   # Valor 10000 (100% escalado)")
         sys.exit(1)
 
     try:
-        porcentaje = int(sys.argv[1])
-        if porcentaje < 0 or porcentaje > 100:
-            print("Error: El porcentaje debe estar entre 0 y 100")
+        valor = int(sys.argv[1])
+        if valor < 0 or valor > 65535:
+            print("Error: El valor debe estar entre 0 y 65535")
             sys.exit(1)
     except ValueError:
         print(f"Error: '{sys.argv[1]}' no es un número válido")
@@ -30,26 +31,26 @@ async def main():
     config_path = sys.argv[2] if len(sys.argv) > 2 else "configs/medidor_potencia.json"
 
     async with ModbusController(config_path) as controller:
-        print(f"\n=== ESTABLECER LIMITACIÓN AL {porcentaje}% (sin habilitar) ===\n")
+        print(f"\n=== ESTABLECER LIMITACIÓN AL {valor} (sin habilitar) ===\n")
 
         # Leer valor actual
         limit_actual = await controller.read_register("Limitacion_potencia")
-        print(f"Limitación actual: {int(limit_actual)}% WMax")
+        print(f"Limitación actual: {int(limit_actual)}")
 
         # Escribir nuevo valor
-        print(f"\nEscribiendo limitación: {porcentaje}% WMax...")
-        await controller.write_register("Limitacion_potencia", porcentaje)
+        print(f"\nEscribiendo limitación: {valor}...")
+        await controller.write_register("Limitacion_potencia", valor)
         await asyncio.sleep(0.5)
 
         # Verificar
         limit_verificado = await controller.read_register("Limitacion_potencia")
-        print(f"Limitación verificada: {int(limit_verificado)}% WMax")
+        print(f"Limitación verificada: {int(limit_verificado)}")
 
-        if int(limit_verificado) == porcentaje:
-            print(f"\n✓ Limitación establecida al {porcentaje}%")
+        if int(limit_verificado) == valor:
+            print(f"\n✓ Limitación establecida al {valor}")
             print("  (Nota: La limitación NO está habilitada todavía)")
         else:
-            print(f"\n✗ Advertencia: Se escribió {porcentaje} pero se leyó {int(limit_verificado)}")
+            print(f"\n✗ Advertencia: Se escribió {valor} pero se leyó {int(limit_verificado)}")
         print()
 
 
