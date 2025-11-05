@@ -21,11 +21,12 @@
             "name": "Limitacion_potencia",
             "address": 40242,
             "type": "uint16",
-            "unit": "% WMax",
+            "unit": "%",
             "function_code": 3,
             "poll_interval": 10.0,
             "writable": true,
-            "description": "WMaxLimPct - Set power output to specified level (0-100%)"
+            "scale_factor": 100,
+            "description": "WMaxLimPct - Set power output (0-100%, hardware expects 0-10000)"
         },
         {
             "name": "Timeout_limitacion",

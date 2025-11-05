@@ -77,11 +77,11 @@ async def aplicar_limit_cero(controller, nombre):
     enable = await controller.read_register("Enable_limitacion")
     limit = await controller.read_register("Limitacion_potencia")
 
-    if int(enable) == 1 and int(limit) == 0:
+    if int(enable) == 1 and abs(limit) < 0.1:
         print(f"  [{nombre}] ✓ LIMIT 0% aplicado (sin producción)")
         return True
     else:
-        print(f"  [{nombre}] ✗ Error: Enable={int(enable)}, Limit={int(limit)}")
+        print(f"  [{nombre}] ✗ Error: Enable={int(enable)}, Limit={limit:.1f}%")
         return False
 
 
@@ -101,7 +101,7 @@ async def controlar_inversor(config_path, nombre):
 
             print(f"\n  [{nombre}] Estado actual:")
             print(f"    Potencia: {potencia:.0f}W")
-            print(f"    Enable: {int(enable_actual)}, Límite: {int(limit_actual)}%")
+            print(f"    Enable: {int(enable_actual)}, Límite: {limit_actual:.1f}%")
 
             # Determinar acción según horario
             if dia_semana >= 5:  # Sábado (5) o Domingo (6)

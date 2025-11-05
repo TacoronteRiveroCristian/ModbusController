@@ -212,6 +212,12 @@ class ModbusController:
                         length=reg.length
                     )
 
+                    # Apply scale factor and offset if configured
+                    if reg.scale_factor is not None:
+                        value = value * reg.scale_factor
+                    if reg.offset is not None:
+                        value = value + reg.offset
+
                     results[reg.name] = {
                         'value': value,
                         'unit': reg.unit,
@@ -278,9 +284,18 @@ class ModbusController:
         """
         reg = self._get_registers_by_name(name)
 
+        # Apply inverse scaling if configured (user value -> raw hardware value)
+        write_value = value
+        if reg.offset is not None:
+            write_value = write_value - reg.offset
+        if reg.scale_factor is not None:
+            if reg.scale_factor == 0:
+                raise WriteError(f"Scale factor cannot be zero for register '{name}'")
+            write_value = write_value / reg.scale_factor
+
         # Convertir valor a registros
         registers = self.converter.value_to_registers(
-            value=value,
+            value=write_value,
             data_type=reg.type,
             length=reg.length
         )
@@ -307,7 +322,11 @@ class ModbusController:
                 if response.isError():
                     raise WriteError(f"Error al escribir: {response}")
 
-                logger.info(f"Escrito '{name}' = {value} en dirección {reg.address}")
+                # Log with scale info if applicable
+                if reg.scale_factor is not None or reg.offset is not None:
+                    logger.info(f"Escrito '{name}' = {value} (raw: {write_value}) en dirección {reg.address}")
+                else:
+                    logger.info(f"Escrito '{name}' = {value} en dirección {reg.address}")
 
                 # Actualizar caché
                 self._last_values[name] = value

@@ -158,11 +158,17 @@ class ModbusDataConverter:
         """
         try:
             if data_type == "uint16":
+                # Accept both int and float (round float to int)
+                if isinstance(value, float):
+                    value = round(value)
                 if not isinstance(value, int) or value < 0 or value > 0xFFFF:
                     raise DataConversionError(f"Valor {value} fuera de rango para uint16 (0-65535)")
                 return [value]
 
             elif data_type == "int16":
+                # Accept both int and float (round float to int)
+                if isinstance(value, float):
+                    value = round(value)
                 if not isinstance(value, int) or value < -32768 or value > 32767:
                     raise DataConversionError(f"Valor {value} fuera de rango para int16 (-32768 a 32767)")
                 # Convertir a unsigned para Modbus
@@ -171,6 +177,9 @@ class ModbusDataConverter:
                 return [value]
 
             elif data_type == "uint32":
+                # Accept both int and float (round float to int)
+                if isinstance(value, float):
+                    value = round(value)
                 if not isinstance(value, int) or value < 0 or value > 0xFFFFFFFF:
                     raise DataConversionError(f"Valor {value} fuera de rango para uint32 (0-4294967295)")
                 if byte_order == "big":
@@ -179,6 +188,9 @@ class ModbusDataConverter:
                     return [value & 0xFFFF, (value >> 16) & 0xFFFF]
 
             elif data_type == "int32":
+                # Accept both int and float (round float to int)
+                if isinstance(value, float):
+                    value = round(value)
                 if not isinstance(value, int) or value < -2147483648 or value > 2147483647:
                     raise DataConversionError(f"Valor {value} fuera de rango para int32")
                 # Convertir a unsigned

@@ -123,14 +123,14 @@ async def aplicar_disable_produccion(controller, nombre: str = "Inversor") -> bo
         limit = await controller.read_register("Limitacion_potencia")
         timeout = await controller.read_register("Timeout_limitacion")
 
-        if int(enable) == 1 and int(limit) == 0 and int(timeout) == 0:
+        if int(enable) == 1 and abs(limit) < 0.1 and int(timeout) == 0:
             logger.info(f"[{nombre}] ✓ DISABLE aplicado correctamente (Enable=1, Limit=0%, Timeout=0)")
             return True
         else:
             logger.error(
                 f"[{nombre}] ✗ Error al aplicar DISABLE: "
                 f"Enable={int(enable)} (esperado: 1), "
-                f"Limit={int(limit)} (esperado: 0), "
+                f"Limit={limit:.1f}% (esperado: 0), "
                 f"Timeout={int(timeout)} (esperado: 0)"
             )
             return False
@@ -187,11 +187,11 @@ async def leer_estado_actual(controller, nombre: str = "Inversor") -> Optional[d
 
         estado = {
             "enable": int(enable),
-            "limit": int(limit),
+            "limit": float(limit),
             "timeout": int(timeout)
         }
 
-        logger.debug(f"[{nombre}] Estado actual: Enable={estado['enable']}, Limit={estado['limit']}%, Timeout={estado['timeout']}")
+        logger.debug(f"[{nombre}] Estado actual: Enable={estado['enable']}, Limit={estado['limit']:.1f}%, Timeout={estado['timeout']}")
         return estado
 
     except Exception as e:
@@ -233,8 +233,8 @@ async def verificar_y_aplicar_estado(config_path: str = DEFAULT_CONFIG, nombre: 
                 # ENABLE = Enable_limitacion debe ser 0
                 necesita_cambio = (estado_actual['enable'] != 0)
             else:  # DISABLE
-                # DISABLE = Enable_limitacion debe ser 1 y Limit debe ser 0
-                necesita_cambio = (estado_actual['enable'] != 1 or estado_actual['limit'] != 0)
+                # DISABLE = Enable_limitacion debe ser 1 y Limit debe ser 0 (usar tolerancia para floats)
+                necesita_cambio = (estado_actual['enable'] != 1 or abs(estado_actual['limit']) >= 0.1)
 
             if necesita_cambio:
                 logger.info(f"[{nombre}] Estado actual no coincide con deseado, aplicando cambio...")
@@ -356,21 +356,21 @@ async def main():
 
     El servicio NUNCA se detiene, continúa ejecutándose incluso si hay errores.
     """
-    # Configuración (modificar según necesidad)
-    config_path = DEFAULT_CONFIG
-    nombre_inversor = "Inversor"
+    # Configuración para UN SOLO inversor:
+    # config_path = DEFAULT_CONFIG
+    # nombre_inversor = "Inversor"
 
-    # Para controlar múltiples inversores, descomentar y adaptar:
-    # INVERSORES = [
-    #     {
-    #         "nombre": "Inversor 136",
-    #         "config": str(PROJECT_DIR / "configs" / "medidor_potencia.json"),
-    #     },
-    #     {
-    #         "nombre": "Inversor 135",
-    #         "config": str(PROJECT_DIR / "configs" / "medidor_potencia_135.json"),
-    #     }
-    # ]
+    # Configuración para MÚLTIPLES inversores (controla ambos en paralelo):
+    INVERSORES = [
+        {
+            "nombre": "Inversor 136",
+            "config": str(PROJECT_DIR / "configs" / "medidor_potencia_136.json"),
+        },
+        {
+            "nombre": "Inversor 135",
+            "config": str(PROJECT_DIR / "configs" / "medidor_potencia_135.json"),
+        }
+    ]
 
     intentos = 0
     while True:
@@ -380,7 +380,21 @@ async def main():
             logger.info(f"# INTENTO DE INICIO #{intentos}")
             logger.info(f"{'#'*70}\n")
 
-            await iniciar_control_automatico(config_path, nombre_inversor)
+            # Control de múltiples inversores en paralelo
+            if INVERSORES:
+                logger.info(f"Iniciando control de {len(INVERSORES)} inversores en paralelo...\n")
+                tasks = []
+                for inv in INVERSORES:
+                    task = asyncio.create_task(
+                        iniciar_control_automatico(inv['config'], inv['nombre'])
+                    )
+                    tasks.append(task)
+
+                # Ejecutar todos en paralelo
+                await asyncio.gather(*tasks)
+            else:
+                # Control de un solo inversor (fallback)
+                await iniciar_control_automatico(DEFAULT_CONFIG, "Inversor")
 
         except KeyboardInterrupt:
             logger.info("\n\nInterrupción manual recibida (Ctrl+C)")

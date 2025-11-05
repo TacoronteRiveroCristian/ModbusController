@@ -23,7 +23,7 @@ async def main():
         timeout = await controller.read_register("Timeout_limitacion")
 
         print(f"Potencia actual: {potencia:.2f} W")
-        print(f"Limitación: {int(limit)}% WMax")
+        print(f"Limitación: {limit:.1f}%")
 
         estado = "HABILITADO" if int(enable) == 1 else "DESHABILITADO"
         print(f"Estado: {estado} ({int(enable)})")
@@ -33,7 +33,7 @@ async def main():
 
         print()
         if int(enable) == 1:
-            print(f"→ La potencia está limitada al {int(limit)}%")
+            print(f"→ La potencia está limitada al {limit:.1f}%")
             if int(timeout) != 0:
                 print(f"⚠ Advertencia: Timeout={int(timeout)} (debería ser 0 para que se mantenga activo)")
         else:
