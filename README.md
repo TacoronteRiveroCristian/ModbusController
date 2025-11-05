@@ -1,18 +1,19 @@
 # ModbusController
 
-Sistema completo de gestión de lecturas y escrituras Modbus con control de frecuencia, gestión inteligente de conexiones y soporte para múltiples formatos de datos.
+Librería Python asíncrona para gestión de comunicaciones Modbus TCP/IP y RTU con soporte para scale factors, monitorización automática y conversión inteligente de tipos de datos.
 
-## 🚀 Características principales
+## 🚀 Características Principales
 
 - ✅ **Soporte dual**: Modbus TCP/IP y RTU
 - ✅ **Asíncrono**: Operaciones no bloqueantes con asyncio
+- ✅ **Scale Factor**: Conversión automática de valores (ej: 0-100% ↔ 0-10000)
 - ✅ **Gestión inteligente**: Agrupación automática de registros consecutivos
-- ✅ **Rate limiting**: Control de frecuencia para no saturar el PLC
+- ✅ **Rate limiting**: Control de frecuencia para no saturar dispositivos
 - ✅ **Conversión de tipos**: uint16, int16, uint32, int32, float32, string
 - ✅ **Monitorización**: Lectura automática con intervalos configurables
 - ✅ **Reconexión automática**: Manejo robusto de pérdidas de conexión
 - ✅ **Caché de valores**: Acceso rápido a últimas lecturas
-- ✅ **Validación con Pydantic**: Configuración JSON validada
+- ✅ **Validación con Pydantic**: Configuración JSON validada automáticamente
 
 ## 📦 Instalación
 
@@ -23,11 +24,16 @@ cd ModbusController
 
 # Instalar dependencias
 pip install -r requirements.txt
+
+# Instalar en modo desarrollo (editable)
+pip install -e .
 ```
 
 ## 🔧 Configuración
 
-Crea un archivo JSON con la configuración de tus registros Modbus:
+### Estructura Básica
+
+Crea un archivo JSON con la configuración de tus registros Modbus. Consulta [`configs/README.md`](configs/README.md) para documentación completa.
 
 ```json
 {
@@ -35,27 +41,27 @@ Crea un archivo JSON con la configuración de tus registros Modbus:
     "type": "tcp",
     "host": "192.168.1.100",
     "port": 502,
-    "timeout": 3,
-    "retry_on_empty": true,
-    "retries": 3
+    "timeout": 3
   },
   "registers": [
     {
-      "name": "temperatura_ambiente",
-      "address": 100,
+      "name": "Temperature",
+      "address": 40100,
       "type": "float32",
       "unit": "°C",
       "function_code": 3,
       "poll_interval": 5.0,
-      "description": "Temperatura ambiente"
+      "description": "Temperature sensor reading"
     },
     {
-      "name": "setpoint_temperatura",
-      "address": 300,
-      "type": "float32",
-      "unit": "°C",
+      "name": "Power_Limit",
+      "address": 40242,
+      "type": "uint16",
+      "unit": "%",
       "function_code": 3,
-      "poll_interval": 10.0
+      "writable": true,
+      "scale_factor": 100,
+      "description": "Power limit: user writes 50, hardware receives 5000"
     }
   ],
   "limits": {
@@ -65,162 +71,121 @@ Crea un archivo JSON con la configuración de tus registros Modbus:
 }
 ```
 
-### Tipos de datos soportados
+### Plantilla de Configuración
 
-| Tipo | Registros | Descripción |
-|------|-----------|-------------|
-| `uint16` | 1 | Entero sin signo 16-bit |
-| `int16` | 1 | Entero con signo 16-bit |
-| `uint32` | 2 | Entero sin signo 32-bit |
-| `int32` | 2 | Entero con signo 32-bit |
-| `float32` | 2 | Punto flotante IEEE 754 |
-| `string` | N | Cadena de texto (N registros) |
+Usa la plantilla como punto de partida:
 
-### Tipos de conexión
-
-#### TCP/IP
-```json
-{
-  "connection": {
-    "type": "tcp",
-    "host": "192.168.1.100",
-    "port": 502,
-    "timeout": 3
-  }
-}
+```bash
+cp configs/config.template.json configs/mi_dispositivo.json
 ```
 
-#### RTU (Serial)
-```json
-{
-  "connection": {
-    "type": "rtu",
-    "port_name": "/dev/ttyUSB0",
-    "baudrate": 9600,
-    "bytesize": 8,
-    "parity": "N",
-    "stopbits": 1,
-    "timeout": 3
-  }
-}
-```
+Consulta [`configs/README.md`](configs/README.md) para:
+- Tipos de datos soportados
+- Configuración de scale factors
+- Ejemplos de TCP/IP y RTU
+- Mejores prácticas
 
-## 📖 Uso
+## 📖 Uso Básico
 
-### Ejemplo básico: Leer todos los registros
+### Lectura de Registros
 
 ```python
 import asyncio
 from modbus_controller import ModbusController
 
 async def main():
-    async with ModbusController("configs/example_config.json") as controller:
+    # Context manager maneja conexión automáticamente
+    async with ModbusController("configs/mi_dispositivo.json") as controller:
         # Leer todos los registros
         valores = await controller.read_all()
 
         for nombre, datos in valores.items():
             print(f"{nombre}: {datos['value']} {datos['unit']}")
 
+        # Leer registro individual
+        temperatura = await controller.read_register("Temperature")
+        print(f"Temperatura: {temperatura:.1f} °C")
+
 asyncio.run(main())
 ```
 
-### Lectura de registro individual
+### Escritura de Registros
 
 ```python
 async with ModbusController("config.json") as controller:
-    temperatura = await controller.read_register("temperatura_ambiente")
-    print(f"Temperatura: {temperatura} °C")
-```
-
-### Escritura de registros
-
-```python
-async with ModbusController("config.json") as controller:
-    # Escribir nuevo setpoint
-    await controller.write_register("setpoint_temperatura", 22.5)
+    # Escribir valor (con scale_factor automático si está configurado)
+    await controller.write_register("Power_Limit", 50)  # Usuario: 50%, Hardware: 5000
 
     # Verificar
-    valor = await controller.read_register("setpoint_temperatura")
-    print(f"Nuevo setpoint: {valor} °C")
+    limit = await controller.read_register("Power_Limit")
+    print(f"Límite configurado: {limit:.1f}%")  # Muestra: 50.0%
 ```
 
-### Monitorización continua
+### Scale Factor Automático
+
+El scale factor permite trabajar con valores amigables:
 
 ```python
-def on_value_change(nombre, valor_anterior, valor_nuevo):
+# Con scale_factor: 100 en la configuración
+async with ModbusController("config.json") as controller:
+    # Usuario escribe porcentaje (0-100)
+    await controller.write_register("Power_Limit", 75)
+
+    # Librería convierte automáticamente: 75 → 7500 (hardware)
+    # Log: "Escrito 'Power_Limit' = 75 (raw: 7500.0)"
+
+    # Usuario lee porcentaje (0-100)
+    value = await controller.read_register("Power_Limit")
+    # Librería convierte automáticamente: 7500 → 75.0 (usuario)
+    print(f"Límite: {value:.1f}%")  # Output: 75.0%
+```
+
+Consulta [`SCALE_FACTOR_IMPLEMENTATION.md`](SCALE_FACTOR_IMPLEMENTATION.md) para detalles técnicos.
+
+### Monitorización Continua
+
+```python
+def on_change(nombre, valor_anterior, valor_nuevo):
     print(f"[CAMBIO] {nombre}: {valor_anterior} → {valor_nuevo}")
 
 async with ModbusController("config.json") as controller:
     # Iniciar monitorización con callback
-    await controller.start_monitoring(callback=on_value_change)
+    await controller.start_monitoring(callback=on_change)
 
-    # Mantener monitorización activa
-    await asyncio.sleep(60)
+    # Mantener activo
+    await asyncio.sleep(3600)  # 1 hora
 
     # Se detiene automáticamente al salir del context manager
 ```
 
-### Control automático basado en lecturas
-
-```python
-async with ModbusController("config.json") as controller:
-    while True:
-        # Leer temperatura
-        temp_actual = await controller.read_register("temperatura_ambiente")
-        setpoint = await controller.read_register("setpoint_temperatura")
-
-        # Lógica de control
-        if temp_actual < setpoint - 1.0:
-            await controller.write_register("control_calefaccion", 1)
-            print("Calefacción ON")
-        elif temp_actual > setpoint + 1.0:
-            await controller.write_register("control_calefaccion", 0)
-            print("Calefacción OFF")
-
-        await asyncio.sleep(5)
-```
-
-### Uso de caché
+### Uso de Caché
 
 ```python
 async with ModbusController("config.json") as controller:
     # Leer desde dispositivo
     await controller.read_all()
 
-    # Acceder a valores desde caché (sin acceso al dispositivo)
-    temp_cached = controller.get_last_value("temperatura_ambiente")
-    print(f"Temperatura (caché): {temp_cached} °C")
+    # Acceso rápido desde caché (sin comunicación Modbus)
+    temp = controller.get_last_value("Temperature")
 
-    # Obtener todos los valores cacheados
+    # Todos los valores cacheados
     all_values = controller.get_all_last_values()
 ```
 
-### Múltiples dispositivos
+## 🎯 Características Avanzadas
+
+### Agrupación Automática de Registros
+
+El controlador optimiza las lecturas agrupando registros consecutivos:
 
 ```python
-# Dispositivo 1 (TCP)
-async with ModbusController("config_plc1.json") as plc1:
-    valores1 = await plc1.read_all()
-
-# Dispositivo 2 (RTU)
-async with ModbusController("config_plc2.json") as plc2:
-    valores2 = await plc2.read_all()
+# Registros en direcciones 100, 101, 102, 103
+# → Se leen en 1 petición en lugar de 4
 ```
 
-## 🎯 Características avanzadas
+### Rate Limiting
 
-### Agrupación automática de registros
-
-El controlador agrupa automáticamente registros consecutivos para optimizar las lecturas:
-
-```python
-# Si tienes registros en direcciones 100, 101, 102, 103
-# Se leerán todos en una sola petición en lugar de 4 peticiones
-```
-
-### Rate limiting
-
-Evita saturar el PLC con peticiones demasiado frecuentes:
+Evita saturar dispositivos con peticiones frecuentes:
 
 ```json
 {
@@ -231,151 +196,198 @@ Evita saturar el PLC con peticiones demasiado frecuentes:
 }
 ```
 
-### Intervalos de monitorización por registro
-
-Cada registro puede tener su propia frecuencia de lectura:
+### Intervalos de Monitorización Personalizados
 
 ```json
 {
   "registers": [
     {
-      "name": "alarma_critica",
-      "poll_interval": 0.5  // Leer cada 0.5 segundos
+      "name": "Critical_Alarm",
+      "poll_interval": 0.5
     },
     {
-      "name": "temperatura",
-      "poll_interval": 5.0  // Leer cada 5 segundos
+      "name": "Temperature",
+      "poll_interval": 5.0
     },
     {
-      "name": "modelo_equipo",
-      "poll_interval": 60.0  // Leer cada minuto
+      "name": "Device_Model",
+      "poll_interval": 60.0
     }
   ]
 }
 ```
 
-### Reconexión automática
+### Múltiples Dispositivos
 
-Si se pierde la conexión, el controlador intenta reconectar automáticamente.
+```python
+# Controlar múltiples dispositivos simultáneamente
+async with ModbusController("config_device1.json") as dev1, \
+           ModbusController("config_device2.json") as dev2:
 
-## 🧪 Tests
+    values1 = await dev1.read_all()
+    values2 = await dev2.read_all()
+```
 
-## 🛠️ Uso del Makefile
+## 📊 Ejemplo Completo: Control Automático
 
-El proyecto incluye un Makefile para facilitar tareas comunes:
+Consulta [`examples/scheduled_control/`](examples/scheduled_control/) para un ejemplo completo de control automático de inversores solares basado en horarios:
+
+- Control automático con APScheduler
+- Timezone configurable (Canarias)
+- Control de múltiples dispositivos en paralelo
+- Manejo robusto de errores con reintentos
+- Logging detallado
 
 ```bash
-make help      # Muestra ayuda de comandos disponibles
-make test      # Ejecuta los tests unitarios
-```
-
-### Scripts de operaciones Modbus
-
-El directorio `scripts/` incluye un Makefile para operaciones rápidas de lectura/escritura:
-
-```bash
-cd scripts/
-
-# Lectura de registros
-make read                              # Leer todos los registros (config por defecto)
-make read CONFIG=configs/otro.json     # Leer con configuración específica
-
-# Control de limitación de potencia
-make status                            # Ver estado actual de limitación
-make limit LIMIT=50                    # Establecer límite al 50% y habilitar
-make set-limit LIMIT=75                # Solo cambiar límite al 75% (sin habilitar)
-make enable                            # Habilitar limitación de potencia
-make disable                           # Deshabilitar limitación de potencia
-
-# Ver todos los comandos disponibles
-make help
-```
-
-## 🧪 Tests
-
-Para ejecutar los tests manualmente:
-
-```bash
-# Instalar pytest
-pip install pytest pytest-asyncio
-
-# Ejecutar tests
-pytest tests/test_controller.py -v
-
-# Tests de integración (requieren servidor Modbus)
-pytest tests/test_controller.py -v -m integration
-```
-
-## 📁 Estructura del proyecto
-
-```
-ModbusController/
-├── requirements.txt
-├── README.md
-├── modbus_controller/
-│   ├── __init__.py
-│   ├── controller.py          # Clase principal
-│   ├── config_loader.py       # Cargador JSON + validación
-│   ├── data_converter.py      # Conversión de tipos
-│   └── exceptions.py          # Excepciones personalizadas
-├── configs/
-│   ├── example_config.json    # Ejemplo TCP
-│   └── example_config_rtu.json # Ejemplo RTU
-├── examples/
-│   └── usage_example.py       # Ejemplos de uso
-└── tests/
-    └── test_controller.py     # Tests unitarios
+cd examples/scheduled_control/
+pip install -r requirements.txt
+python scheduled_inverter_control.py
 ```
 
 ## 🔍 Logging
 
-El controlador usa logging de Python:
+Configura el nivel de logging según necesites:
 
 ```python
 import logging
 
-# Configurar nivel de logging
+# Información general
 logging.basicConfig(level=logging.INFO)
 
-# O más detallado para debugging
+# Debug detallado (incluye lecturas/escrituras)
 logging.basicConfig(level=logging.DEBUG)
 ```
 
-## ⚠️ Consideraciones importantes
+Ejemplo de logs con scale_factor:
+```
+INFO: Escrito 'Power_Limit' = 50 (raw: 5000.0) en dirección 40242
+INFO: Conectado exitosamente via TCP
+```
 
-1. **Límite de registros**: Algunos servidores Modbus solo permiten leer 125 registros por petición. El controlador maneja esto automáticamente.
+## 🛠️ Desarrollo
 
-2. **Strings**: Para leer strings (modelos, nombres), usa `type: "string"` y especifica `length` (número de registros).
+### Tests
 
-3. **Function codes**:
-   - FC 3: Read Holding Registers (lectura/escritura)
-   - FC 4: Read Input Registers (solo lectura)
+```bash
+# Instalar dependencias de test
+pip install pytest pytest-asyncio
 
-4. **Slave ID**: Por defecto es 1, pero puedes especificarlo:
-   ```python
-   await controller.read_all(slave=2)
-   ```
+# Ejecutar tests unitarios
+make test
 
-## 🐛 Manejo de errores
+# O manualmente
+pytest tests/test_controller.py -v
+
+# Tests de integración (requieren servidor Modbus real)
+pytest tests/test_controller.py -v -m integration
+```
+
+### Estructura del Proyecto
+
+```
+ModbusController/
+├── README.md                          # Este archivo
+├── requirements.txt                   # Dependencias principales
+├── setup.py                          # Configuración del paquete
+├── modbus_controller/                # Librería principal
+│   ├── __init__.py
+│   ├── controller.py                 # Clase ModbusController
+│   ├── config_loader.py              # Cargador y validador JSON
+│   ├── data_converter.py             # Conversión de tipos + scale factor
+│   └── exceptions.py                 # Excepciones personalizadas
+├── configs/                          # Configuraciones de ejemplo
+│   ├── README.md                     # Documentación de configuración
+│   ├── config.template.json          # Plantilla
+│   ├── medidor_potencia.json         # Ejemplo: inversor solar 136
+│   └── medidor_potencia_135.json     # Ejemplo: inversor solar 135
+├── examples/                         # Ejemplos de uso
+│   └── scheduled_control/            # Control automático por horarios
+│       ├── README.md
+│       ├── requirements.txt
+│       └── scheduled_inverter_control.py
+└── tests/                            # Tests unitarios
+    └── test_controller.py
+```
+
+## 🐛 Manejo de Errores
 
 ```python
 from modbus_controller.exceptions import (
     ConnectionError,
     ReadError,
     WriteError,
-    ConfigurationError
+    ConfigurationError,
+    DataConversionError
 )
 
 try:
     async with ModbusController("config.json") as controller:
-        await controller.read_all()
+        value = await controller.read_register("Temperature")
 except ConnectionError as e:
     print(f"Error de conexión: {e}")
 except ReadError as e:
     print(f"Error de lectura: {e}")
+except WriteError as e:
+    print(f"Error de escritura: {e}")
 except ConfigurationError as e:
     print(f"Error de configuración: {e}")
+except DataConversionError as e:
+    print(f"Error de conversión: {e}")
 ```
+
+## ⚠️ Consideraciones Importantes
+
+### Tipos de Datos
+
+| Tipo | Registros | Rango | Uso |
+|------|-----------|-------|-----|
+| `uint16` | 1 | 0-65535 | Enteros positivos |
+| `int16` | 1 | -32768 a 32767 | Enteros con signo |
+| `uint32` | 2 | 0-4294967295 | Enteros grandes |
+| `int32` | 2 | -2147483648 a 2147483647 | Enteros grandes con signo |
+| `float32` | 2 | IEEE 754 | Decimales |
+| `string` | N | - | Texto ASCII |
+
+### Function Codes
+
+- **FC 3**: Read Holding Registers (lectura/escritura)
+- **FC 4**: Read Input Registers (solo lectura)
+- **FC 6**: Write Single Register (automático)
+- **FC 16**: Write Multiple Registers (automático)
+
+### Scale Factor
+
+**Siempre documenta el rango esperado:**
+
+```json
+{
+  "name": "Power_Limit",
+  "scale_factor": 100,
+  "description": "User: 0-100%, Hardware: 0-10000"
+}
+```
+
+**Nunca uses `scale_factor: 0`** (causará división por cero).
+
+### Límite de Registros
+
+Algunos dispositivos limitan a 125 registros por petición. El controlador maneja esto automáticamente mediante agrupación inteligente.
+
+### Slave ID
+
+Por defecto es 1, pero puedes especificarlo:
+
+```python
+await controller.read_all(slave=2)
+await controller.write_register("name", value, slave=3)
+```
+
+## 📚 Documentación Adicional
+
+- [`configs/README.md`](configs/README.md) - Guía completa de configuración
+- [`examples/scheduled_control/README.md`](examples/scheduled_control/README.md) - Control automático por horarios
+- [`SCALE_FACTOR_IMPLEMENTATION.md`](SCALE_FACTOR_IMPLEMENTATION.md) - Detalles técnicos de scale factor
+- [`CLAUDE.md`](CLAUDE.md) - Instrucciones para Claude Code
 
 ## 📝 Licencia
 
@@ -383,7 +395,7 @@ MIT License
 
 ## 👥 Contribuciones
 
-Las contribuciones son bienvenidas. Por favor:
+Las contribuciones son bienvenidas:
 
 1. Fork del repositorio
 2. Crea una rama para tu feature
@@ -394,3 +406,9 @@ Las contribuciones son bienvenidas. Por favor:
 ## 📞 Soporte
 
 Para reportar bugs o solicitar features, abre un issue en el repositorio.
+
+## 🙏 Agradecimientos
+
+- [pymodbus](https://github.com/pymodbus-dev/pymodbus) - Implementación del protocolo Modbus
+- [Pydantic](https://pydantic-docs.helpmanual.io/) - Validación de datos
+- [SunSpec Alliance](https://sunspec.org/) - Estándares para inversores solares

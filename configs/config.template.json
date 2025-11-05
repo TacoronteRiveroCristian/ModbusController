@@ -1,0 +1,46 @@
+{
+    "connection": {
+        "type": "tcp",
+        "host": "192.168.1.100",
+        "port": 502,
+        "timeout": 3,
+        "retry_on_empty": true,
+        "retry_delay": 1
+    },
+    "registers": [
+        {
+            "name": "Example_Register",
+            "address": 40001,
+            "type": "uint16",
+            "unit": "",
+            "function_code": 3,
+            "poll_interval": 10.0,
+            "writable": false,
+            "description": "Example read-only register"
+        },
+        {
+            "name": "Power_Limit",
+            "address": 40242,
+            "type": "uint16",
+            "unit": "%",
+            "function_code": 3,
+            "poll_interval": 10.0,
+            "writable": true,
+            "scale_factor": 100,
+            "description": "Power limitation (0-100%, hardware expects 0-10000)"
+        },
+        {
+            "name": "Temperature",
+            "address": 40100,
+            "type": "float32",
+            "unit": "°C",
+            "function_code": 3,
+            "poll_interval": 5.0,
+            "description": "Temperature sensor reading"
+        }
+    ],
+    "limits": {
+        "max_registers_per_read": 125,
+        "min_request_interval": 0.1
+    }
+}

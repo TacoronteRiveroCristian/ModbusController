@@ -1,6 +1,0 @@
-# Dependencias adicionales para los scripts de ejemplo
-# Instalar con: pip install -r examples/requirements-examples.txt
-
-# Requerido para scheduled_inverter_control.py
-apscheduler>=3.10.0
-pytz>=2023.3
