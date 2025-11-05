@@ -22,7 +22,9 @@ from typing import Optional
 
 # Configurar importación del módulo principal
 SCRIPT_DIR = Path(__file__).parent
-PROJECT_DIR = SCRIPT_DIR.parent
+PROJECT_DIR = (
+    SCRIPT_DIR.parent.parent
+)  # Subir dos niveles: scheduled_control -> examples -> raíz
 sys.path.insert(0, str(PROJECT_DIR))
 
 from modbus_controller import ModbusController
@@ -35,14 +37,14 @@ import pytz
 # ========================== CONFIGURACIÓN ==========================
 
 # Timezone de Canarias
-TIMEZONE = pytz.timezone('Atlantic/Canary')
+TIMEZONE = pytz.timezone("Atlantic/Canary")
 
 # Ruta a la configuración del inversor (modificar según necesidad)
 DEFAULT_CONFIG = str(PROJECT_DIR / "configs" / "medidor_potencia.json")
 
 # Horario laboral (hora en formato 24h)
-HORA_INICIO_LABORAL = 7   # 07:00
-HORA_FIN_LABORAL = 15      # 15:59 (hasta las 16:00)
+HORA_INICIO_LABORAL = 7  # 07:00
+HORA_FIN_LABORAL = 15  # 15:59 (hasta las 16:00)
 
 # Intervalo de verificación periódica (minutos)
 INTERVALO_VERIFICACION = 5
@@ -51,15 +53,18 @@ INTERVALO_VERIFICACION = 5
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
 
 # ========================== FUNCIONES DE CONTROL ==========================
 
-async def aplicar_enable_produccion(controller, nombre: str = "Inversor") -> bool:
+
+async def aplicar_enable_produccion(
+    controller, nombre: str = "Inversor"
+) -> bool:
     """
     ENABLE: Habilita producción completa (desactiva limitación)
 
@@ -80,10 +85,14 @@ async def aplicar_enable_produccion(controller, nombre: str = "Inversor") -> boo
         enable = await controller.read_register("Enable_limitacion")
 
         if int(enable) == 0:
-            logger.info(f"[{nombre}] ✓ ENABLE aplicado correctamente (Enable=0, producción completa)")
+            logger.info(
+                f"[{nombre}] ✓ ENABLE aplicado correctamente (Enable=0, producción completa)"
+            )
             return True
         else:
-            logger.error(f"[{nombre}] ✗ Error al aplicar ENABLE: Enable={int(enable)} (esperado: 0)")
+            logger.error(
+                f"[{nombre}] ✗ Error al aplicar ENABLE: Enable={int(enable)} (esperado: 0)"
+            )
             return False
 
     except Exception as e:
@@ -91,7 +100,9 @@ async def aplicar_enable_produccion(controller, nombre: str = "Inversor") -> boo
         return False
 
 
-async def aplicar_disable_produccion(controller, nombre: str = "Inversor") -> bool:
+async def aplicar_disable_produccion(
+    controller, nombre: str = "Inversor"
+) -> bool:
     """
     DISABLE: Deshabilita producción (limitación al 0%)
 
@@ -124,7 +135,9 @@ async def aplicar_disable_produccion(controller, nombre: str = "Inversor") -> bo
         timeout = await controller.read_register("Timeout_limitacion")
 
         if int(enable) == 1 and abs(limit) < 0.1 and int(timeout) == 0:
-            logger.info(f"[{nombre}] ✓ DISABLE aplicado correctamente (Enable=1, Limit=0%, Timeout=0)")
+            logger.info(
+                f"[{nombre}] ✓ DISABLE aplicado correctamente (Enable=1, Limit=0%, Timeout=0)"
+            )
             return True
         else:
             logger.error(
@@ -141,6 +154,7 @@ async def aplicar_disable_produccion(controller, nombre: str = "Inversor") -> bo
 
 
 # ========================== LÓGICA DE HORARIOS ==========================
+
 
 def determinar_estado_segun_horario() -> str:
     """
@@ -169,11 +183,15 @@ def determinar_estado_segun_horario() -> str:
         return "ENABLE"
 
     # Caso por defecto (no debería llegar aquí)
-    logger.warning(f"Horario no clasificado (día {dia_semana}, hora {hora}): DISABLE por seguridad")
+    logger.warning(
+        f"Horario no clasificado (día {dia_semana}, hora {hora}): DISABLE por seguridad"
+    )
     return "DISABLE"
 
 
-async def leer_estado_actual(controller, nombre: str = "Inversor") -> Optional[dict]:
+async def leer_estado_actual(
+    controller, nombre: str = "Inversor"
+) -> Optional[dict]:
     """
     Lee el estado actual del inversor
 
@@ -188,10 +206,12 @@ async def leer_estado_actual(controller, nombre: str = "Inversor") -> Optional[d
         estado = {
             "enable": int(enable),
             "limit": float(limit),
-            "timeout": int(timeout)
+            "timeout": int(timeout),
         }
 
-        logger.debug(f"[{nombre}] Estado actual: Enable={estado['enable']}, Limit={estado['limit']:.1f}%, Timeout={estado['timeout']}")
+        logger.debug(
+            f"[{nombre}] Estado actual: Enable={estado['enable']}, Limit={estado['limit']:.1f}%, Timeout={estado['timeout']}"
+        )
         return estado
 
     except Exception as e:
@@ -199,7 +219,9 @@ async def leer_estado_actual(controller, nombre: str = "Inversor") -> Optional[d
         return None
 
 
-async def verificar_y_aplicar_estado(config_path: str = DEFAULT_CONFIG, nombre: str = "Inversor"):
+async def verificar_y_aplicar_estado(
+    config_path: str = DEFAULT_CONFIG, nombre: str = "Inversor"
+):
     """
     Verifica el horario actual y aplica el estado correspondiente al inversor
 
@@ -217,7 +239,9 @@ async def verificar_y_aplicar_estado(config_path: str = DEFAULT_CONFIG, nombre: 
         ahora = datetime.now(TIMEZONE)
 
         logger.info(f"{'='*60}")
-        logger.info(f"[{nombre}] Verificación: {ahora.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+        logger.info(
+            f"[{nombre}] Verificación: {ahora.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+        )
         logger.info(f"[{nombre}] Estado deseado: {estado_deseado}")
 
         async with ModbusController(config_path) as controller:
@@ -225,19 +249,26 @@ async def verificar_y_aplicar_estado(config_path: str = DEFAULT_CONFIG, nombre: 
             estado_actual = await leer_estado_actual(controller, nombre)
 
             if estado_actual is None:
-                logger.error(f"[{nombre}] No se pudo leer el estado actual, reintentando en próxima verificación")
+                logger.error(
+                    f"[{nombre}] No se pudo leer el estado actual, reintentando en próxima verificación"
+                )
                 return
 
             # Determinar si el estado actual coincide con el deseado
             if estado_deseado == "ENABLE":
                 # ENABLE = Enable_limitacion debe ser 0
-                necesita_cambio = (estado_actual['enable'] != 0)
+                necesita_cambio = estado_actual["enable"] != 0
             else:  # DISABLE
                 # DISABLE = Enable_limitacion debe ser 1 y Limit debe ser 0 (usar tolerancia para floats)
-                necesita_cambio = (estado_actual['enable'] != 1 or abs(estado_actual['limit']) >= 0.1)
+                necesita_cambio = (
+                    estado_actual["enable"] != 1
+                    or abs(estado_actual["limit"]) >= 0.1
+                )
 
             if necesita_cambio:
-                logger.info(f"[{nombre}] Estado actual no coincide con deseado, aplicando cambio...")
+                logger.info(
+                    f"[{nombre}] Estado actual no coincide con deseado, aplicando cambio..."
+                )
 
                 if estado_deseado == "ENABLE":
                     exito = await aplicar_enable_produccion(controller, nombre)
@@ -247,9 +278,13 @@ async def verificar_y_aplicar_estado(config_path: str = DEFAULT_CONFIG, nombre: 
                 if exito:
                     logger.info(f"[{nombre}] ✓ Estado aplicado correctamente")
                 else:
-                    logger.error(f"[{nombre}] ✗ Error al aplicar estado, se reintentará en próxima verificación")
+                    logger.error(
+                        f"[{nombre}] ✗ Error al aplicar estado, se reintentará en próxima verificación"
+                    )
             else:
-                logger.info(f"[{nombre}] ✓ Estado actual ya es el correcto, no se requiere acción")
+                logger.info(
+                    f"[{nombre}] ✓ Estado actual ya es el correcto, no se requiere acción"
+                )
 
         logger.info(f"{'='*60}\n")
 
@@ -260,7 +295,10 @@ async def verificar_y_aplicar_estado(config_path: str = DEFAULT_CONFIG, nombre: 
 
 # ========================== SCHEDULER ==========================
 
-async def iniciar_control_automatico(config_path: str = DEFAULT_CONFIG, nombre: str = "Inversor"):
+
+async def iniciar_control_automatico(
+    config_path: str = DEFAULT_CONFIG, nombre: str = "Inversor"
+):
     """
     Inicia el sistema de control automático con APScheduler
 
@@ -273,15 +311,19 @@ async def iniciar_control_automatico(config_path: str = DEFAULT_CONFIG, nombre: 
         config_path: Ruta al archivo de configuración JSON
         nombre: Nombre descriptivo del inversor (para logs)
     """
-    logger.info("="*70)
+    logger.info("=" * 70)
     logger.info("CONTROL AUTOMÁTICO DE INVERSORES SOLARES - INICIO")
-    logger.info("="*70)
+    logger.info("=" * 70)
     logger.info(f"Configuración: {config_path}")
     logger.info(f"Inversor: {nombre}")
     logger.info(f"Timezone: {TIMEZONE}")
-    logger.info(f"Horario laboral: {HORA_INICIO_LABORAL}:00 - {HORA_FIN_LABORAL}:59 (Lun-Vie)")
-    logger.info(f"Verificación periódica: cada {INTERVALO_VERIFICACION} minutos")
-    logger.info("="*70 + "\n")
+    logger.info(
+        f"Horario laboral: {HORA_INICIO_LABORAL}:00 - {HORA_FIN_LABORAL}:59 (Lun-Vie)"
+    )
+    logger.info(
+        f"Verificación periódica: cada {INTERVALO_VERIFICACION} minutos"
+    )
+    logger.info("=" * 70 + "\n")
 
     # Crear scheduler
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
@@ -289,38 +331,47 @@ async def iniciar_control_automatico(config_path: str = DEFAULT_CONFIG, nombre: 
     # Job 1: Verificación periódica cada N minutos
     scheduler.add_job(
         verificar_y_aplicar_estado,
-        trigger='interval',
+        trigger="interval",
         minutes=INTERVALO_VERIFICACION,
         args=[config_path, nombre],
-        id='verificacion_periodica',
-        name='Verificación periódica de estado'
+        id="verificacion_periodica",
+        name="Verificación periódica de estado",
     )
 
     # Job 2: Cambio a ENABLE a las 07:00 (lunes a viernes)
     scheduler.add_job(
         verificar_y_aplicar_estado,
-        trigger=CronTrigger(hour=HORA_INICIO_LABORAL, minute=0, day_of_week='mon-fri', timezone=TIMEZONE),
+        trigger=CronTrigger(
+            hour=HORA_INICIO_LABORAL,
+            minute=0,
+            day_of_week="mon-fri",
+            timezone=TIMEZONE,
+        ),
         args=[config_path, nombre],
-        id='inicio_laboral',
-        name='Inicio jornada laboral (07:00)'
+        id="inicio_laboral",
+        name="Inicio jornada laboral (07:00)",
     )
 
     # Job 3: Cambio a DISABLE a las 16:00 (lunes a viernes)
     scheduler.add_job(
         verificar_y_aplicar_estado,
-        trigger=CronTrigger(hour=16, minute=0, day_of_week='mon-fri', timezone=TIMEZONE),
+        trigger=CronTrigger(
+            hour=16, minute=0, day_of_week="mon-fri", timezone=TIMEZONE
+        ),
         args=[config_path, nombre],
-        id='fin_laboral',
-        name='Fin jornada laboral (16:00)'
+        id="fin_laboral",
+        name="Fin jornada laboral (16:00)",
     )
 
     # Job 4: Cambio a DISABLE los sábados a las 00:00
     scheduler.add_job(
         verificar_y_aplicar_estado,
-        trigger=CronTrigger(hour=0, minute=0, day_of_week='sat', timezone=TIMEZONE),
+        trigger=CronTrigger(
+            hour=0, minute=0, day_of_week="sat", timezone=TIMEZONE
+        ),
         args=[config_path, nombre],
-        id='inicio_fin_semana',
-        name='Inicio fin de semana (Sábado 00:00)'
+        id="inicio_fin_semana",
+        name="Inicio fin de semana (Sábado 00:00)",
     )
 
     # Iniciar scheduler
@@ -335,13 +386,17 @@ async def iniciar_control_automatico(config_path: str = DEFAULT_CONFIG, nombre: 
     logger.info("\nPróximas ejecuciones programadas:")
     for job in scheduler.get_jobs():
         next_run = job.next_run_time
-        logger.info(f"  - {job.name}: {next_run.strftime('%Y-%m-%d %H:%M:%S %Z') if next_run else 'N/A'}")
+        logger.info(
+            f"  - {job.name}: {next_run.strftime('%Y-%m-%d %H:%M:%S %Z') if next_run else 'N/A'}"
+        )
     logger.info("\n")
 
     # Mantener el scheduler ejecutándose indefinidamente
     try:
         while True:
-            await asyncio.sleep(3600)  # Dormir 1 hora entre checks del loop principal
+            await asyncio.sleep(
+                3600
+            )  # Dormir 1 hora entre checks del loop principal
     except KeyboardInterrupt:
         logger.info("\nInterrupción recibida, deteniendo scheduler...")
         scheduler.shutdown()
@@ -349,6 +404,7 @@ async def iniciar_control_automatico(config_path: str = DEFAULT_CONFIG, nombre: 
 
 
 # ========================== MAIN ==========================
+
 
 async def main():
     """
@@ -364,12 +420,22 @@ async def main():
     INVERSORES = [
         {
             "nombre": "Inversor 136",
-            "config": str(PROJECT_DIR / "configs" / "medidor_potencia_136.json"),
+            "config": str(
+                PROJECT_DIR
+                / "examples"
+                / "scheduled_control"
+                / "medidor_potencia_136.json"
+            ),
         },
         {
             "nombre": "Inversor 135",
-            "config": str(PROJECT_DIR / "configs" / "medidor_potencia_135.json"),
-        }
+            "config": str(
+                PROJECT_DIR
+                / "examples"
+                / "scheduled_control"
+                / "medidor_potencia_135.json"
+            ),
+        },
     ]
 
     intentos = 0
@@ -382,11 +448,13 @@ async def main():
 
             # Control de múltiples inversores en paralelo
             if INVERSORES:
-                logger.info(f"Iniciando control de {len(INVERSORES)} inversores en paralelo...\n")
+                logger.info(
+                    f"Iniciando control de {len(INVERSORES)} inversores en paralelo...\n"
+                )
                 tasks = []
                 for inv in INVERSORES:
                     task = asyncio.create_task(
-                        iniciar_control_automatico(inv['config'], inv['nombre'])
+                        iniciar_control_automatico(inv["config"], inv["nombre"])
                     )
                     tasks.append(task)
 
@@ -411,7 +479,7 @@ async def main():
             logger.info("Reiniciando servicio...\n")
 
     logger.info("\nServicio finalizado correctamente")
-    logger.info("="*70 + "\n")
+    logger.info("=" * 70 + "\n")
 
 
 if __name__ == "__main__":
