@@ -1,7 +1,7 @@
 {
     "connection": {
         "type": "tcp",
-        "host": "10.142.230.136",
+        "host": "10.142.230.135",
         "port": 502,
         "timeout": 3,
         "retry_on_empty": true,
@@ -22,21 +22,41 @@
             "address": 40242,
             "type": "uint16",
             "unit": "%",
+            "scale_factor": 0.01,
             "function_code": 3,
             "poll_interval": 10.0,
             "writable": true,
-            "scale_factor": 100,
-            "description": "WMaxLimPct - Set power output (0-100%, hardware expects 0-10000)"
+            "description": "WMaxLimPct - Set power output (0.00-100.00%)"
+        },
+        {
+            "name": "TimeWindow_limitacion",
+            "address": 40243,
+            "type": "uint16",
+            "unit": "Secs",
+            "function_code": 3,
+            "poll_interval": 10.0,
+            "writable": true,
+            "description": "WMaxLimPct_WinTms - Time window for power limit change (0-300 secs)"
         },
         {
             "name": "Timeout_limitacion",
             "address": 40244,
             "type": "uint16",
-            "unit": "",
+            "unit": "Secs",
             "function_code": 3,
             "poll_interval": 10.0,
             "writable": true,
-            "description": "Timeout control - Must be 0 for persistent enable (0=No timeout, 1=Auto-reset)"
+            "description": "WMaxLimPct_RvrtTms - Timeout period for power limit (0-28800 secs, 0=persistent)"
+        },
+        {
+            "name": "RampTime_limitacion",
+            "address": 40245,
+            "type": "uint16",
+            "unit": "Secs",
+            "function_code": 3,
+            "poll_interval": 10.0,
+            "writable": true,
+            "description": "WMaxLimPct_RmpTms - Ramp time for moving from current to new setpoint (0-65534 secs)"
         },
         {
             "name": "Enable_limitacion",
